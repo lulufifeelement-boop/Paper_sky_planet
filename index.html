@@ -1097,5 +1097,320 @@ window.__game={G,CLP,addAst,rock:()=>rockReady,PLANETS,startGame,toMenu,selectPl
 requestAnimationFrame(frame);
 })();
 </script>
+
+<style id="paper-powerups-v1">
+#paper-power-fx{position:fixed;inset:0;width:100%;height:100%;z-index:8;pointer-events:none}
+#paper-power-status{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:18;max-width:min(250px,58vw);padding:9px 12px;border:1px solid rgba(255,226,174,.24);border-radius:14px;background:rgba(7,10,22,.7);color:#fff1d4;font:12px/1.55 system-ui,sans-serif;white-space:pre-line;pointer-events:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0;transform:translateY(7px);transition:opacity .25s,transform .25s}
+#paper-power-status.on{opacity:1;transform:translateY(0)}
+#paper-power-status b{color:#ffe3a6;font-size:12px;letter-spacing:.04em}
+#paper-power-toast{position:fixed;z-index:19;left:50%;top:calc(122px + env(safe-area-inset-top,0px));transform:translate(-50%,-8px);max-width:calc(100vw - 28px);padding:10px 15px;border-radius:999px;border:1px solid rgba(255,226,174,.3);background:rgba(8,9,18,.82);color:#fff2d8;font:600 13px/1.35 system-ui,sans-serif;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;backdrop-filter:blur(8px)}
+#paper-power-toast.on{opacity:1;transform:translate(-50%,0)}
+#paper-landing{display:none;position:fixed;inset:0;z-index:1000;color:#fff3dd;background:#05070c;font-family:Georgia,'Times New Roman',serif;overflow:hidden;isolation:isolate}
+#paper-landing.show{display:block}
+#paper-landing-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#paper-landing:after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.06) 0%,transparent 42%,rgba(0,0,0,.18) 65%,rgba(0,0,0,.75) 100%)}
+#paper-landing-panel{position:absolute;z-index:2;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(650px,calc(100vw - 24px));max-height:49vh;overflow:auto;padding:clamp(16px,3.5vw,24px);border:1px solid rgba(255,231,191,.28);border-radius:20px;background:rgba(9,10,16,.68);box-shadow:0 16px 60px rgba(0,0,0,.25);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);text-align:center;opacity:0;transition:opacity .8s}
+#paper-landing.ready #paper-landing-panel{opacity:1}
+#paper-landing .pl-kicker{font:11px/1.5 system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#f5ca90;opacity:.94}
+#paper-landing h2{margin:5px 0 8px;font-size:clamp(25px,6vw,38px);font-weight:400;line-height:1.1}
+#paper-landing .pl-summary{margin:0 auto 10px;max-width:560px;font:14px/1.45 system-ui,sans-serif;color:rgba(255,245,224,.85)}
+#paper-landing .pl-fact{margin:9px auto 14px;padding-top:10px;border-top:1px solid rgba(255,235,200,.18);max-width:560px;font:italic 14px/1.5 Georgia,serif;color:#ffe6bb}
+#paper-landing .pl-fact b{display:block;margin-bottom:3px;font:10px/1.5 system-ui,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f5c98d}
+#paper-landing .pl-stats{display:flex;justify-content:center;gap:22px;margin:9px 0 14px;font:11px/1.4 system-ui,sans-serif;color:rgba(255,242,219,.7)}
+#paper-landing .pl-stats strong{display:block;font:22px/1.1 Georgia,serif;color:#fff2d8;font-weight:400}
+#paper-landing .pl-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+#paper-landing .pl-btn{border:1px solid rgba(255,228,178,.38);border-radius:999px;padding:11px 16px;background:rgba(242,190,126,.16);color:#fff2d8;font:600 12px/1.2 system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
+#paper-landing .pl-btn.primary{background:#f1d2a0;color:#1a1715;border-color:#f1d2a0}
+@media(max-height:620px){#paper-landing-panel{max-height:54vh;padding:12px 14px}#paper-landing .pl-summary{font-size:12px;margin-bottom:6px}#paper-landing .pl-fact{font-size:12px;margin:6px auto 9px;padding-top:7px}#paper-landing .pl-stats{margin:6px 0 9px}#paper-landing .pl-btn{padding:9px 13px}}
+</style>
+<canvas id="paper-power-fx" aria-hidden="true"></canvas>
+<div id="paper-power-status" aria-live="polite"></div>
+<div id="paper-power-toast" aria-live="polite"></div>
+<section id="paper-landing" aria-label="Посадка на планету">
+  <canvas id="paper-landing-canvas" aria-hidden="true"></canvas>
+  <div id="paper-landing-panel">
+    <div class="pl-kicker" id="pl-kicker">Посадка завершена</div>
+    <h2 id="pl-title">Планета достигнута</h2>
+    <p class="pl-summary" id="pl-summary"></p>
+    <div class="pl-fact"><b>Случайный факт миссии</b><span id="pl-fact"></span></div>
+    <div class="pl-stats"><div><strong id="pl-score">0</strong>очков</div><div><strong id="pl-near">0</strong>близких пролётов</div><div><strong id="pl-hits">0/3</strong>повреждений</div></div>
+    <div class="pl-actions"><button class="pl-btn primary" id="pl-again">Ещё полёт</button><button class="pl-btn" id="pl-next">Следующая планета</button><button class="pl-btn" id="pl-menu">Выбор планеты</button></div>
+  </div>
+</section>
+<script>
+(function(){
+'use strict';
+var api=window.__game;if(!api||!api.G)return;
+var G=api.G,doc=document,clamp=function(v,a,b){return Math.max(a,Math.min(b,v));};
+var fx=doc.getElementById('paper-power-fx'),fc=fx.getContext('2d');
+var lc=doc.getElementById('paper-landing-canvas'),lcx=lc.getContext('2d');
+var status=doc.getElementById('paper-power-status'),toast=doc.getElementById('paper-power-toast'),landing=doc.getElementById('paper-landing');
+var worldClock=0,prevMode=G.mode,lastFrame=performance.now(),lastScore=G.score,nextSpawn=6.5;
+var bonuses=[],sparkles=[],shieldUntil=0,magnetUntil=0,doubleUntil=0,lives=0;
+var shieldWasGod=false,shieldActive=false,landingStart=0,landingKey='',landingFact='',landingShown=false;
+var toastUntil=0,lastW=0,lastH=0,dpr=1,starField=[],craters=[],pebbles=[],cloudSeed=1;
+var pickData=[
+ {type:'shield',name:'СИЛОВОЕ ПОЛЕ',glyph:'⬡',color:'#67e8ff',help:'15 секунд: астероиды разбиваются о поле и не наносят урон.'},
+ {type:'life',name:'ЗАПАСНАЯ ЖИЗНЬ',glyph:'♥',color:'#ff7aa8',help:'Если самолётик разобьётся, он восстановится и продолжит полёт.'},
+ {type:'repair',name:'РЕМОНТНЫЙ НАБОР',glyph:'✚',color:'#9cffb0',help:'Восстанавливает одно повреждение. Если всё цело — даёт запасную жизнь.'},
+ {type:'crystal',name:'ЗВЁЗДНЫЙ КРИСТАЛЛ',glyph:'✦',color:'#ffe88a',help:'+300 очков сразу.'},
+ {type:'magnet',name:'ГРАВИТАЦИОННЫЙ МАГНИТ',glyph:'⌁',color:'#c4a2ff',help:'12 секунд притягивает другие бонусы поблизости.'},
+ {type:'double',name:'ДВОЙНЫЕ ОЧКИ',glyph:'×2',color:'#ffb86b',help:'18 секунд все заработанные очки удваиваются.'},
+ {type:'pulse',name:'ИМПУЛЬСНЫЙ РАЗРЯД',glyph:'ϟ',color:'#83ffe2',help:'Уничтожает все астероиды на поле и приносит +100 очков.'}
+];
+var landingData={
+ mercury:{title:'Касание Меркурия',kicker:'Посадка · мир без неба',summary:'Самолётик опускается на серо-бурую каменистую равнину. Вокруг — ударные кратеры, резкие чёрные тени и огромный солнечный диск. Здесь почти нет атмосферы, которая могла бы смягчить свет или удерживать тепло.',facts:[
+ 'С поверхности Меркурия Солнце выглядело бы более чем втрое крупнее, чем с Земли.',
+ 'Меркурианский год длится всего около 88 земных суток.',
+ 'В некоторых постоянно затенённых полярных кратерах Меркурия может сохраняться водяной лёд.',
+ 'Днём температура поверхности может достигать примерно +430 °C, а ночью падать до −180 °C.',
+ 'У Меркурия не плотная атмосфера, а крайне разреженная экзосфера.'
+ ]},
+ venus:{title:'Касание Венеры',kicker:'Посадка · под тяжёлыми облаками',summary:'За золотисто-охристой дымкой лежит раскалённая каменистая поверхность. Горизонт растворяется в плотной атмосфере, а тёмные вулканические гряды едва проступают сквозь жаркую мглу. Это не голубое небо Земли, а густая углекислотная оболочка.',facts:[
+ 'Температура у поверхности Венеры — около +465–467 °C: она горячее Меркурия.',
+ 'Давление у поверхности Венеры примерно в 93 раза выше земного на уровне моря.',
+ 'Облака Венеры содержат капли серной кислоты, а сама атмосфера состоит главным образом из углекислого газа.',
+ 'Венера вращается в обратную сторону относительно большинства планет.',
+ 'Один оборот Венеры вокруг оси длится около 243 земных суток — дольше её года.'
+ ]},
+ earth:{title:'Возвращение на Землю',kicker:'Посадка · голубой дом',summary:'Под самолётиком раскрывается земной горизонт: синяя вода, облачные тени, зелёные склоны и мягкий свет в атмосфере. После долгого космического маршрута ветер шевелит траву, а далеко впереди блестит океан.',facts:[
+ 'Около 71% поверхности Земли покрыто океанами.',
+ 'Воздух у поверхности Земли состоит примерно из 78% азота и 21% кислорода.',
+ 'В земных океанах находится около 97% всей воды планеты.',
+ 'Земля — единственный известный нам мир с устойчивыми океанами жидкой воды на поверхности.',
+ 'Глобальная атмосфера Земли защищает поверхность от значительной части вредного излучения и мелких метеороидов.'
+ ]},
+ mars:{title:'Касание Марса',kicker:'Посадка · красная пустыня',summary:'Самолётик скользит над ржаво-красным реголитом. Вдалеке поднимается широкий щит Олимпа, а в тонком розоватом небе видны крошечные спутники. Пыль здесь может долго оставаться в воздухе — плотной земной атмосферы у Марса нет.',facts:[
+ 'Олимп — гигантский щитовой вулкан Марса высотой примерно 22–26 км, самый высокий известный вулкан Солнечной системы.',
+ 'Марсианский день длится около 24 часов 39 минут.',
+ 'Атмосфера Марса состоит преимущественно из углекислого газа, а давление у поверхности меньше 1% земного.',
+ 'У Марса два небольших спутника — Фобос и Деймос; оба имеют неправильную форму.',
+ 'Долины Маринера — гигантская система каньонов длиной около 4 000 км.'
+ ]}
+};
+function randPick(a){return a[(Math.random()*a.length)|0];}
+function resizeCanvases(){
+ var w=innerWidth,h=innerHeight;dpr=Math.min(devicePixelRatio||1,2);
+ if(w===lastW&&h===lastH)return;lastW=w;lastH=h;
+ fx.width=Math.round(w*dpr);fx.height=Math.round(h*dpr);fc.setTransform(dpr,0,0,dpr,0,0);
+ lc.width=Math.round(w*dpr);lc.height=Math.round(h*dpr);lcx.setTransform(dpr,0,0,dpr,0,0);
+ var r=seeded(4201);starField=[];craters=[];pebbles=[];
+ for(var i=0;i<150;i++)starField.push({x:r()*w,y:r()*h,s:.35+r()*1.5,a:.25+r()*.7});
+ for(var j=0;j<42;j++)craters.push({x:r()*w,y:h*(.65+r()*.33),r:8+r()*w*.052});
+ for(var k=0;k<160;k++)pebbles.push({x:r()*w,y:h*(.68+r()*.32),r:.6+r()*4,shade:r()});
+}
+function seeded(seed){return function(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};}
+function showToast(title,detail,seconds){
+ toast.textContent=title+(detail?' · '+detail:'');toast.classList.add('on');toastUntil=worldClock+(seconds||2.6);
+}
+function setStatuses(){
+ var rows=[];
+ if(shieldUntil>worldClock)rows.push('⬡ Силовое поле · '+Math.ceil(shieldUntil-worldClock)+' с');
+ if(magnetUntil>worldClock)rows.push('⌁ Магнит · '+Math.ceil(magnetUntil-worldClock)+' с');
+ if(doubleUntil>worldClock)rows.push('×2 Очки · '+Math.ceil(doubleUntil-worldClock)+' с');
+ if(lives>0)rows.push('♥ Запасные жизни · '+lives);
+ if(rows.length){status.innerHTML='<b>АКТИВНЫЕ БОНУСЫ</b>\n'+rows.join('\n');status.classList.add('on');}
+ else {status.classList.remove('on');status.textContent='';}
+}
+function updateDamageIcons(){
+ var arr=doc.querySelectorAll('#dmg .ic');
+ arr.forEach(function(el,i){el.classList.toggle('lost',i>=3-G.hits);});
+}
+function clearEffects(){
+ if(shieldActive){G.god=shieldWasGod;shieldActive=false;}
+ shieldUntil=0;magnetUntil=0;doubleUntil=0;lives=0;bonuses.length=0;sparkles.length=0;
+ G.bonusLives=0;status.classList.remove('on');toast.classList.remove('on');landing.classList.remove('show','ready');landingShown=false;
+}
+function respawn(){
+ if(lives<=0)return false;
+ lives--;G.bonusLives=lives;G.mode='play';G.deadT=0;G.overShown=false;G.hits=0;G.inv=2.8;G.unst=0;G.flash=0;G.shake=0;G.roll=0;G.pitch=.25;
+ if(G.frags)G.frags.length=0;if(G.parts)G.parts.length=0;
+ if(G.ast)G.ast=G.ast.filter(function(a){return a.z>22;});
+ var over=doc.getElementById('over');if(over)over.classList.remove('show');
+ updateDamageIcons();showToast('ЗАПАСНАЯ ЖИЗНЬ','Самолётик восстановлен',3.2);return true;
+}
+function activateBonus(b){
+ var d=pickData.find(function(v){return v.type===b.type;});if(!d)return;
+ if(b.type==='shield'){
+  if(!shieldActive){shieldWasGod=!!G.god;shieldActive=true;}
+  shieldUntil=Math.max(worldClock,shieldUntil)+15;G.god=true;
+ }else if(b.type==='life'){
+  lives++;G.bonusLives=lives;
+ }else if(b.type==='repair'){
+  if(G.hits>0){G.hits--;updateDamageIcons();}else{lives++;G.bonusLives=lives;}
+ }else if(b.type==='crystal'){
+  G.score+=300;lastScore=G.score;
+ }else if(b.type==='magnet'){
+  magnetUntil=Math.max(worldClock,magnetUntil)+12;
+ }else if(b.type==='double'){
+  doubleUntil=Math.max(worldClock,doubleUntil)+18;
+ }else if(b.type==='pulse'){
+  G.ast.length=0;G.score+=100;lastScore=G.score;
+  for(var i=0;i<24;i++)sparkles.push({x:innerWidth*.5+(Math.random()-.5)*innerWidth*.6,y:innerHeight*.48+(Math.random()-.5)*innerHeight*.5,r:2+Math.random()*4,life:1,age:0,color:d.color});
+ }
+ for(var p=0;p<24;p++)sparkles.push({x:b.sx||innerWidth/2,y:b.sy||innerHeight/2,r:1.5+Math.random()*3.5,life:.7+Math.random()*.6,age:0,color:d.color});
+ showToast(d.name,d.help,3.1);setStatuses();
+}
+function project(x,y,z){
+ var w=innerWidth,h=innerHeight,bx=clamp(w/h*2.3,2.4,4.4),sc=Math.min(w*.46/bx,h*.105);
+ var dd=4.6+2.4*(clamp(G.t/3.6,0,1)*(clamp(G.t/3.6,0,1))*(3-2*clamp(G.t/3.6,0,1)));
+ var s=sc*dd/(z+dd);if(z+dd<.35)return null;
+ var vy=h*.30,ch=(h*.66-vy)/sc;
+ return {x:w/2+(x-G.camX)*s,y:vy+(G.camY+ch-y)*s,s:s};
+}
+function spawnBonus(){
+ var types=pickData.map(function(x){return x.type;}),weights=[18,10,14,20,12,13,13],v=Math.random()*100,chosen=types[types.length-1];
+ for(var i=0;i<types.length;i++){v-=weights[i];if(v<=0){chosen=types[i];break;}}
+ var w=innerWidth,h=innerHeight,bx=clamp(w/h*2.3,2.4,4.4);
+ bonuses.push({type:chosen,x:clamp(G.px+(Math.random()-.5)*2.5,-bx*.72,bx*.72),y:clamp(G.py+(Math.random()-.5)*1.65,-1.45,1.3),z:58+Math.random()*15,spin:Math.random()*6.28,age:0,sz:.95+Math.random()*.16,sx:0,sy:0});
+}
+function drawBonus(b){
+ var p=project(b.x,b.y,b.z);if(!p)return;
+ b.sx=p.x;b.sy=p.y;var r=clamp(10+p.s*b.sz*1.0,9,42),d=pickData.find(function(v){return v.type===b.type;});if(!d)return;
+ fc.save();fc.translate(p.x,p.y+Math.sin(b.age*3+b.spin)*2);fc.rotate(b.spin+b.age*.35);
+ var gr=fc.createRadialGradient(0,0,1,0,0,r*1.9);gr.addColorStop(0,d.color+'66');gr.addColorStop(1,d.color+'00');fc.fillStyle=gr;fc.beginPath();fc.arc(0,0,r*1.9,0,Math.PI*2);fc.fill();
+ fc.strokeStyle=d.color;fc.globalAlpha=.9;fc.lineWidth=1.4;fc.beginPath();fc.arc(0,0,r*1.05,0,Math.PI*2);fc.stroke();
+ fc.globalAlpha=.7;fc.setLineDash([3,4]);fc.beginPath();fc.ellipse(0,0,r*1.35,r*.52,.5,0,Math.PI*2);fc.stroke();fc.setLineDash([]);
+ fc.globalAlpha=1;fc.fillStyle='rgba(8,11,23,.9)';fc.beginPath();fc.arc(0,0,r*.78,0,Math.PI*2);fc.fill();
+ fc.strokeStyle=d.color;fc.lineWidth=1.5;fc.stroke();
+ fc.rotate(-b.spin-b.age*.35);fc.fillStyle=d.color;fc.font='bold '+Math.max(11,r*.78)+'px system-ui,sans-serif';fc.textAlign='center';fc.textBaseline='middle';fc.fillText(d.glyph,0,1);
+ fc.restore();
+}
+function drawShield(){
+ if(shieldUntil<=worldClock||G.mode!=='play'&&G.mode!=='flyby')return;
+ var w=innerWidth,h=innerHeight,bx=clamp(w/h*2.3,2.4,4.4),sc=Math.min(w*.46/bx,h*.105),r=clamp(sc*.98,38,100),x=w*.5+(G.px-G.camX)*sc*.65,y=h*.66-(G.py-G.camY)*sc*.65;
+ var gr=fc.createRadialGradient(x,y,r*.12,x,y,r);gr.addColorStop(0,'rgba(85,227,255,.03)');gr.addColorStop(.72,'rgba(79,216,255,.06)');gr.addColorStop(1,'rgba(79,216,255,.24)');
+ fc.save();fc.fillStyle=gr;fc.strokeStyle='rgba(112,238,255,'+(.45+.18*Math.sin(worldClock*5))+')';fc.lineWidth=2;fc.beginPath();fc.ellipse(x,y,r*.78,r,0,0,Math.PI*2);fc.fill();fc.stroke();
+ fc.strokeStyle='rgba(181,249,255,.28)';fc.lineWidth=1;fc.beginPath();fc.ellipse(x,y,r*.66,r*.88,worldClock*.08,0,Math.PI*2);fc.stroke();fc.restore();
+}
+function fxFrame(now){
+ requestAnimationFrame(fxFrame);resizeCanvases();
+ var dt=Math.min(.05,Math.max(0,(now-lastFrame)/1000));lastFrame=now;
+ fc.clearRect(0,0,innerWidth,innerHeight);
+ if(G.running&&!G.paused&&(G.mode==='play'||G.mode==='flyby'))worldClock+=dt;
+ if(G.mode==='play'&&G.running&&!G.paused){
+  if(worldClock>=nextSpawn){if(bonuses.length<3)spawnBonus();nextSpawn=worldClock+6.5+Math.random()*3.8;}
+ }
+ if(G.mode==='flyby'&&worldClock>=nextSpawn){nextSpawn=worldClock+100;}
+ if(shieldUntil>0&&shieldUntil<=worldClock){shieldUntil=0;if(shieldActive){G.god=shieldWasGod;shieldActive=false;showToast('СИЛОВОЕ ПОЛЕ','защита завершена',1.8);}}
+ if(G.mode==='play'||G.mode==='flyby'){
+  for(var i=bonuses.length-1;i>=0;i--){
+   var b=bonuses[i];b.age+=dt;b.z-=(G.V||14)*dt;
+   if(magnetUntil>worldClock&&b.z<34&&Math.hypot(b.x-G.px,b.y-G.py)<6){b.x+=(G.px-b.x)*Math.min(1,dt*2.4);b.y+=(G.py-b.y)*Math.min(1,dt*2.4);}
+   if(Math.abs(b.z)<1.15&&Math.hypot(b.x-G.px,b.y-G.py)<.98){activateBonus(b);bonuses.splice(i,1);continue;}
+   if(b.z<-5)bonuses.splice(i,1);
+  }
+  if(shieldUntil>worldClock&&G.ast){
+   for(var a=G.ast.length-1;a>=0;a--){var rock=G.ast[a];var dist=Math.hypot(rock.x-G.px,rock.y-G.py);
+    if(rock.hit||(Math.abs(rock.z)<1.5&&dist<rock.r*.82+.9)){
+     var pr=project(rock.x,rock.y,rock.z);if(pr)for(var q=0;q<7;q++)sparkles.push({x:pr.x,y:pr.y,r:2+Math.random()*4,life:.32+Math.random()*.25,age:0,color:'#79edff'});
+     G.ast.splice(a,1);G.score+=12;
+    }
+   }
+  }
+  if(G.score!==lastScore){
+   var delta=G.score-lastScore;if(doubleUntil>worldClock&&delta>0)G.score+=delta;
+   lastScore=G.score;
+  }
+ }else if(G.mode==='dead'&&lives>0){respawn();lastScore=G.score;}
+ for(var s=sparkles.length-1;s>=0;s--){var sp=sparkles[s];sp.age+=dt;if(sp.age>=sp.life){sparkles.splice(s,1);continue;}fc.globalAlpha=1-sp.age/sp.life;fc.fillStyle=sp.color;fc.beginPath();fc.arc(sp.x,sp.y,sp.r*(.4+sp.age*2),0,Math.PI*2);fc.fill();}
+ fc.globalAlpha=1;
+ if(G.mode==='play'||G.mode==='flyby'){
+  bonuses.forEach(drawBonus);drawShield();setStatuses();
+ }else if(G.mode==='menu'){
+  if(shieldActive){G.god=shieldWasGod;shieldActive=false;}
+  if(prevMode!=='menu')clearEffects();
+ }
+ if(toast.classList.contains('on')&&worldClock>toastUntil)toast.classList.remove('on');
+ if(G.mode==='play'&&G.t<1.1&&(prevMode==='menu'||prevMode==='win'||prevMode==='dead')){
+  if(prevMode==='menu'||prevMode==='win'){clearEffects();worldClock=0;nextSpawn=5.5;lastScore=G.score;G.bonusLives=0;}
+ }
+ if(G.mode==='win'&&G.running&&!landingShown)showLanding();
+ if(G.mode!=='win'&&landingShown){landingShown=false;landing.classList.remove('show','ready');}
+ if(landingShown){drawLandingScene(now);if(now/1000-landingStart>1.55)landing.classList.add('ready');}
+ prevMode=G.mode;
+}
+function showLanding(){
+ landingShown=true;landingStart=performance.now()/1000;landingKey=G.planet;
+ var d=landingData[landingKey]||landingData.earth;landingFact=randPick(d.facts);
+ doc.getElementById('pl-kicker').textContent=d.kicker;doc.getElementById('pl-title').textContent=d.title;
+ doc.getElementById('pl-summary').textContent=d.summary;doc.getElementById('pl-fact').textContent=landingFact;
+ doc.getElementById('pl-score').textContent=Math.floor(G.score);doc.getElementById('pl-near').textContent=G.near;doc.getElementById('pl-hits').textContent=G.hits+'/3';
+ landing.classList.add('show');landing.classList.remove('ready');
+ var win=doc.getElementById('win');if(win)win.classList.remove('show');
+ status.classList.remove('on');
+}
+function drawLandingScene(now){
+ var w=innerWidth,h=innerHeight,t=Math.max(0,now/1000-landingStart),g=lcx;
+ g.clearRect(0,0,w,h);drawEnvironment(g,w,h,landingKey,t);
+ var phase=clamp(t/3.2,0,1),ease=phase*phase*(3-2*phase);
+ var px=w*(.23+.29*ease),py=h*(.40+.29*ease),ground=h*.735;
+ g.save();g.globalAlpha=.24;g.fillStyle='#09090b';g.beginPath();g.ellipse(px+9,ground+4,10+19*ease,3+3*ease,-.08,0,Math.PI*2);g.fill();g.restore();
+ if(t>2.45&&landingKey!=='mercury'&&landingKey!=='venus'){g.save();g.globalAlpha=.2;g.fillStyle='#f5d8a1';g.beginPath();g.ellipse(px-15,py+7,13,2,-.2,0,Math.PI*2);g.fill();g.restore();}
+ g.save();g.translate(px,py);g.rotate((1-ease)*-.13+Math.sin(t*1.7)*(1-ease)*.025);var size=clamp(w*.032,13,25);
+ g.shadowColor='rgba(0,0,0,.45)';g.shadowBlur=7;g.fillStyle='#fffdf3';g.strokeStyle='rgba(69,58,48,.85)';g.lineWidth=1;
+ g.beginPath();g.moveTo(size*1.65,0);g.lineTo(-size,-size*.7);g.lineTo(-size*.52,0);g.lineTo(-size,size*.58);g.closePath();g.fill();g.stroke();
+ g.beginPath();g.moveTo(size*1.65,0);g.lineTo(-size*.52,0);g.lineTo(-size*.12,size*.22);g.closePath();g.fillStyle='#d8d2c8';g.fill();g.restore();
+ if(t>2.7&&(landingKey==='mars'||landingKey==='venus'||landingKey==='mercury')){g.save();g.globalAlpha=.3;for(var i=0;i<8;i++){var q=(t*35+i*37)%w;g.fillStyle=landingKey==='mars'?'#e7a06b':'#d6a16c';g.beginPath();g.arc(q,ground-3-(i%3)*4,1+(i%2),0,Math.PI*2);g.fill();}g.restore();}
+}
+function drawEnvironment(g,w,h,key,t){
+ var sky=g.createLinearGradient(0,0,0,h);
+ if(key==='mercury'){sky.addColorStop(0,'#02030a');sky.addColorStop(.62,'#080a11');sky.addColorStop(1,'#22232b');}
+ else if(key==='venus'){sky.addColorStop(0,'#8c552f');sky.addColorStop(.38,'#c38b4f');sky.addColorStop(.68,'#e0a66a');sky.addColorStop(1,'#5d3020');}
+ else if(key==='earth'){sky.addColorStop(0,'#2767a6');sky.addColorStop(.45,'#74b5dd');sky.addColorStop(.72,'#d5e9e6');sky.addColorStop(1,'#d9d1ad');}
+ else{sky.addColorStop(0,'#7c6670');sky.addColorStop(.38,'#c18a83');sky.addColorStop(.68,'#e2a080');sky.addColorStop(1,'#9c4b37');}
+ g.fillStyle=sky;g.fillRect(0,0,w,h);
+ if(key==='mercury'){
+  starField.forEach(function(s){g.globalAlpha=s.a;g.fillStyle='#fff5dc';g.fillRect(s.x,s.y,s.s,s.s);});g.globalAlpha=1;
+  var sx=w*.22,sy=h*.19,sr=Math.min(w,h)*.085;var glow=g.createRadialGradient(sx,sy,sr*.4,sx,sy,sr*3.6);glow.addColorStop(0,'rgba(255,251,224,.35)');glow.addColorStop(1,'rgba(255,235,170,0)');g.fillStyle=glow;g.fillRect(sx-sr*4,sy-sr*4,sr*8,sr*8);
+  g.fillStyle='#fff8d7';g.beginPath();g.arc(sx,sy,sr,0,Math.PI*2);g.fill();
+  g.fillStyle='#d2d1d0';g.beginPath();g.moveTo(0,h*.68);for(var m=0;m<=10;m++)g.lineTo(m*w/10,h*(.64+Math.sin(m*2.2)*.035));g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.fill();
+  g.fillStyle='#85858b';g.beginPath();g.moveTo(0,h*.76);for(var n=0;n<=12;n++)g.lineTo(n*w/12,h*(.72+Math.sin(n*1.8+.4)*.04));g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.fill();
+  var grad=g.createLinearGradient(0,h*.77,0,h);grad.addColorStop(0,'#7b7c83');grad.addColorStop(.45,'#56575f');grad.addColorStop(1,'#303039');g.fillStyle=grad;g.beginPath();g.moveTo(0,h*.79);for(var q=0;q<=12;q++)g.lineTo(q*w/12,h*(.77+Math.sin(q*2.7)*.035));g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.fill();
+  craters.forEach(function(c){if(c.y<h*.74)return;g.fillStyle='rgba(16,17,23,.22)';g.beginPath();g.ellipse(c.x,c.y,c.r*1.4,c.r*.5,0,0,Math.PI*2);g.fill();g.strokeStyle='rgba(209,206,199,.36)';g.lineWidth=1.2;g.beginPath();g.ellipse(c.x-c.r*.12,c.y-c.r*.12,c.r,c.r*.37,0,Math.PI*.95,Math.PI*2);g.stroke();});
+ }else if(key==='venus'){
+  for(var a=0;a<8;a++){g.save();g.globalAlpha=.07+((a%3)*.025);g.strokeStyle=a%2?'#f6d2a0':'#6e3d29';g.lineWidth=10+a%3*8;g.beginPath();g.ellipse(w*(.2+(a*37%70)/100),h*(.15+(a%4)*.12),w*(.42+(a%3)*.15),h*(.09+(a%4)*.018),-.1+a*.03,0,Math.PI*2);g.stroke();g.restore();}
+  var haze=g.createLinearGradient(0,h*.42,0,h*.79);haze.addColorStop(0,'rgba(255,211,143,0)');haze.addColorStop(1,'rgba(255,195,114,.38)');g.fillStyle=haze;g.fillRect(0,h*.35,w,h*.5);
+  g.fillStyle='#865133';g.beginPath();g.moveTo(0,h*.7);g.lineTo(w*.12,h*.67);g.lineTo(w*.2,h*.69);g.lineTo(w*.34,h*.54);g.lineTo(w*.45,h*.68);g.lineTo(w*.57,h*.64);g.lineTo(w*.71,h*.49);g.lineTo(w*.82,h*.65);g.lineTo(w,h*.62);g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.fill();
+  g.fillStyle='#48281f';g.beginPath();g.moveTo(0,h*.81);for(var v=0;v<=12;v++)g.lineTo(v*w/12,h*(.78+Math.sin(v*1.7)*.035));g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.fill();
+  for(var rb=0;rb<38;rb++){var rx=(rb*97%997)/997*w,ry=h*(.79+(rb*29%180)/1000),rr=2+(rb*13%14);g.fillStyle=rb%3?'#70412d':'#b17a4d';g.beginPath();g.ellipse(rx,ry,rr*1.4,rr*.65,(rb%7)*.12,0,Math.PI*2);g.fill();}
+ }else if(key==='earth'){
+  g.fillStyle='rgba(255,255,255,.72)';drawCloud(g,w*.18,h*.18,w*.15,h*.035);drawCloud(g,w*.68,h*.29,w*.2,h*.045);drawCloud(g,w*.82,h*.12,w*.12,h*.03);
+  var sea=g.createLinearGradient(0,h*.58,0,h*.84);sea.addColorStop(0,'#2d90c6');sea.addColorStop(1,'#155a85');g.fillStyle=sea;g.fillRect(0,h*.59,w,h*.32);
+  g.fillStyle='#91b5b9';g.beginPath();g.moveTo(0,h*.67);g.lineTo(w*.1,h*.59);g.lineTo(w*.23,h*.63);g.lineTo(w*.36,h*.56);g.lineTo(w*.5,h*.64);g.lineTo(w*.63,h*.6);g.lineTo(w*.78,h*.62);g.lineTo(w,h*.58);g.lineTo(w,h*.78);g.lineTo(0,h*.78);g.closePath();g.fill();
+  g.fillStyle='#e4d7ad';g.beginPath();g.moveTo(0,h*.77);g.lineTo(w*.16,h*.72);g.lineTo(w*.29,h*.74);g.lineTo(w*.46,h*.71);g.lineTo(w*.62,h*.75);g.lineTo(w*.79,h*.71);g.lineTo(w,h*.75);g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.fill();
+  g.fillStyle='#6c935c';g.beginPath();g.moveTo(0,h*.83);g.quadraticCurveTo(w*.18,h*.65,w*.38,h*.83);g.quadraticCurveTo(w*.58,h*.69,w*.75,h*.82);g.quadraticCurveTo(w*.9,h*.73,w,h*.81);g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.fill();
+  g.fillStyle='#3f6f48';g.beginPath();g.moveTo(0,h*.91);g.quadraticCurveTo(w*.2,h*.77,w*.44,h*.9);g.quadraticCurveTo(w*.75,h*.76,w,h*.9);g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.fill();
+ }else{
+  g.save();g.globalAlpha=.1;for(var dc=0;dc<7;dc++){g.fillStyle='#f6d1bc';g.beginPath();g.ellipse((dc*173%997)/997*w,h*(.18+(dc%4)*.1),w*.16,h*.018,0,0,Math.PI*2);g.fill();}g.restore();
+  g.fillStyle='#b76d62';g.beginPath();g.moveTo(0,h*.67);g.lineTo(w*.14,h*.64);g.lineTo(w*.26,h*.61);g.lineTo(w*.37,h*.64);g.lineTo(w*.49,h*.55);g.lineTo(w*.66,h*.62);g.lineTo(w*.78,h*.65);g.lineTo(w,h*.61);g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.fill();
+  // Olympus Mons as a broad shield volcano rather than a sharp mountain
+  g.fillStyle='#985548';g.beginPath();g.moveTo(w*.25,h*.7);g.quadraticCurveTo(w*.34,h*.48,w*.48,h*.47);g.quadraticCurveTo(w*.63,h*.49,w*.74,h*.7);g.closePath();g.fill();
+  g.strokeStyle='rgba(245,184,151,.35)';g.lineWidth=2;g.beginPath();g.quadraticCurveTo(w*.39,h*.52,w*.48,h*.51);g.stroke();
+  g.fillStyle='#cd9b91';g.beginPath();g.arc(w*.76,h*.15,Math.min(w,h)*.018,0,Math.PI*2);g.fill();
+  g.fillStyle='#d9b1a7';g.beginPath();g.arc(w*.87,h*.22,Math.min(w,h)*.009,0,Math.PI*2);g.fill();
+  g.fillStyle='#9f4d3b';g.beginPath();g.moveTo(0,h*.8);g.quadraticCurveTo(w*.2,h*.7,w*.43,h*.83);g.quadraticCurveTo(w*.66,h*.75,w,h*.81);g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.fill();
+  g.fillStyle='#74382d';g.beginPath();g.moveTo(0,h*.91);g.quadraticCurveTo(w*.29,h*.8,w*.52,h*.91);g.quadraticCurveTo(w*.78,h*.83,w,h*.9);g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.fill();
+  pebbles.forEach(function(p){if(p.y<h*.73)return;g.fillStyle=p.shade>.5?'#783d31':'#d17e61';g.beginPath();g.ellipse(p.x,p.y,p.r*1.4,p.r*.8,.2,0,Math.PI*2);g.fill();});
+  g.save();g.globalAlpha=.24;g.strokeStyle='#efb59a';for(var dust=0;dust<3;dust++){g.beginPath();g.moveTo(w*(.72+dust*.025),h*.84);g.bezierCurveTo(w*(.68+dust*.02),h*.77,w*(.77+dust*.03),h*.74,w*(.73+dust*.02),h*.69);g.stroke();}g.restore();
+ }
+ // Thin atmospheric horizon glow where an atmosphere exists
+ if(key!=='mercury'){var hz=g.createLinearGradient(0,h*.56,0,h*.76);hz.addColorStop(0,'rgba(255,230,190,0)');hz.addColorStop(.7,key==='earth'?'rgba(190,239,255,.17)':'rgba(255,191,119,.14)');hz.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=hz;g.fillRect(0,h*.53,w,h*.25);}
+}
+function drawCloud(g,x,y,rx,ry){
+ g.beginPath();g.ellipse(x-rx*.34,y,rx*.54,ry,0,0,Math.PI*2);g.ellipse(x,y-ry*.35,rx*.52,ry*1.2,0,0,Math.PI*2);g.ellipse(x+rx*.35,y,rx*.58,ry*.9,0,0,Math.PI*2);g.fill();
+}
+function attachButtons(){
+ doc.getElementById('pl-again').addEventListener('click',function(){landing.classList.remove('show','ready');landingShown=false;doc.getElementById('wAgain').click();});
+ doc.getElementById('pl-next').addEventListener('click',function(){landing.classList.remove('show','ready');landingShown=false;doc.getElementById('wNext').click();});
+ doc.getElementById('pl-menu').addEventListener('click',function(){landing.classList.remove('show','ready');landingShown=false;api.toMenu();});
+}
+attachButtons();
+window.addEventListener('resize',resizeCanvases,{passive:true});
+resizeCanvases();
+requestAnimationFrame(fxFrame);
+})();
+</script>
+
 </body>
 </html>

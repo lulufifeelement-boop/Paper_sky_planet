@@ -897,8 +897,7 @@ function paperGrid(){
   for(let y=0;y<PTH;y++)for(let x=0;x<PTW;x++){const i=(y*PTW+x)*4,n=(r()-.5)*9+(fbm3(x*.025,y*.025,1.7,3)-.5)*18;d[i]+=n;d[i+1]+=n;d[i+2]+=n*1.1;}
   g.putImageData(im,0,0);
   g.strokeStyle='rgba(120,108,92,.07)';g.lineWidth=1;
-  for(let i=0;i<300;i++){const x=r()*PTW,y=r()*PTH,a=r()*6.28,l=4+r()*11;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l);g.stroke();}
-  const cell=16;g.lineWidth=1.5;g.strokeStyle='rgba(84,132,206,.68)';g.beginPath();
+  for(let i=0;i<300;i++){const x=r()*PTW,y=r()*PTH,a=r()*6.28,l=4+r()*11;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l);g.stroke();}  const cell=16;g.lineWidth=1.5;g.strokeStyle='rgba(84,132,206,.68)';g.beginPath();
   for(let x=cell*.5;x<PTW;x+=cell){g.moveTo(x,0);g.lineTo(x,PTH);}
   for(let y=cell*.5;y<PTH;y+=cell){g.moveTo(0,y);g.lineTo(PTW,y);}
   g.stroke();
